@@ -6,13 +6,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { 
   ArrowLeftIcon,
-  CurrencyRupeeIcon,
   ChartBarIcon,
   ArrowUpIcon,
   ArrowDownIcon,
   InformationCircleIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import ArbiRupeeLogo from '@/components/ArbiRupeeLogo';
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -117,9 +117,7 @@ export default function AaveIntegration() {
             <ArrowLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
           </button>
           <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-              <CurrencyRupeeIcon className="w-5 h-5 text-white" />
-            </div>
+            <ArbiRupeeLogo variant="icon" width={32} height={32} />
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               ArbiRupee
             </span>

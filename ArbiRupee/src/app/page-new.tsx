@@ -7,13 +7,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { 
   ArrowRightIcon, 
-  CurrencyRupeeIcon, 
   ShieldCheckIcon, 
   BoltIcon,
   ChartBarIcon,
   GlobeAltIcon,
   TrophyIcon
 } from '@heroicons/react/24/outline';
+import ArbiRupeeLogo from '@/components/ArbiRupeeLogo';
 
 const fadeInUp = {
   initial: { opacity: 0, y: 60 },
@@ -52,7 +52,7 @@ export default function Home() {
 
   const features = [
     {
-      icon: CurrencyRupeeIcon,
+      icon: () => <ArbiRupeeLogo variant="icon" width={24} height={24} />,
       title: "INR-Pegged Stability",
       description: "arbINR maintains 1:1 peg with Indian Rupee, backed by real INR reserves."
     },
@@ -124,7 +124,7 @@ export default function Home() {
           className="flex items-center space-x-2"
         >
           <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-            <CurrencyRupeeIcon className="w-5 h-5 text-white" />
+            <ArbiRupeeLogo variant="icon" width={20} height={20} />
           </div>
           <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             ArbiRupee
@@ -314,7 +314,7 @@ export default function Home() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <CurrencyRupeeIcon className="w-5 h-5 text-white" />
+                <ArbiRupeeLogo variant="icon" width={20} height={20} />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 ArbiRupee

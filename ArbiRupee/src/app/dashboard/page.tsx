@@ -9,7 +9,6 @@ import {
   ArrowUpIcon,
   ArrowDownIcon,
   ArrowsRightLeftIcon,
-  CurrencyRupeeIcon,
   ChartBarIcon,
   TrophyIcon,
   EyeIcon,
@@ -19,6 +18,7 @@ import {
   CheckCircleIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import ArbiRupeeLogo from '@/components/ArbiRupeeLogo';
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -190,9 +190,7 @@ export default function Dashboard() {
           className="flex items-center space-x-2 cursor-pointer"
           onClick={() => router.push('/')}
         >
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-            <CurrencyRupeeIcon className="w-5 h-5 text-white" />
-          </div>
+          <ArbiRupeeLogo variant="icon" width={32} height={32} />
           <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             ArbiRupee
           </span>
@@ -275,9 +273,7 @@ export default function Dashboard() {
                   </div>
                 )}
               </div>
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl flex items-center justify-center">
-                <CurrencyRupeeIcon className="w-6 h-6 text-white" />
-              </div>
+              <ArbiRupeeLogo variant="icon" width={48} height={48} />
             </div>
             
             <div className="grid grid-cols-3 gap-4 mt-6">

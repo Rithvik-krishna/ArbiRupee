@@ -7,13 +7,13 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { 
   ArrowRightIcon, 
-  CurrencyRupeeIcon, 
   ShieldCheckIcon, 
   BoltIcon,
   ChartBarIcon,
   GlobeAltIcon,
   TrophyIcon
 } from '@heroicons/react/24/outline';
+import ArbiRupeeLogo from '@/components/ArbiRupeeLogo';
 
 const fadeInUp = {
   initial: { opacity: 0, y: 60 },
@@ -41,7 +41,7 @@ export default function Home() {
 
   const features = [
     {
-      icon: CurrencyRupeeIcon,
+      icon: () => <ArbiRupeeLogo variant="icon" width={24} height={24} />,
       title: "INR-Pegged Stability",
       description: "arbINR maintains 1:1 peg with Indian Rupee, backed by real INR reserves."
     },
@@ -127,9 +127,7 @@ export default function Home() {
           transition={{ duration: 0.5 }}
           className="flex items-center space-x-2"
         >
-          <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-            <CurrencyRupeeIcon className="w-5 h-5 text-white" />
-          </div>
+          <ArbiRupeeLogo variant="icon" width={32} height={32} />
           <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
             ArbiRupee
           </span>
@@ -317,9 +315,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-6 py-12">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <CurrencyRupeeIcon className="w-5 h-5 text-white" />
-              </div>
+              <ArbiRupeeLogo variant="icon" width={32} height={32} />
               <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 ArbiRupee
               </span>

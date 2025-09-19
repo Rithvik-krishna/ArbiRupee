@@ -6,12 +6,12 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { 
   ArrowLeftIcon,
-  CurrencyRupeeIcon,
   ArrowUpIcon,
   InformationCircleIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
+import ArbiRupeeLogo from '@/components/ArbiRupeeLogo';
 
 const fadeInUp = {
   initial: { opacity: 0, y: 20 },
@@ -158,7 +158,7 @@ export default function Withdraw() {
           className="flex items-center space-x-2"
         >
           <div className="w-8 h-8 bg-gradient-to-r from-red-600 to-orange-600 rounded-lg flex items-center justify-center">
-            <CurrencyRupeeIcon className="w-5 h-5 text-white" />
+            <ArbiRupeeLogo variant="icon" width={20} height={20} />
           </div>
           <span className="text-xl font-bold bg-gradient-to-r from-red-600 to-orange-600 bg-clip-text text-transparent">
             Withdraw arbINR
@@ -201,7 +201,7 @@ export default function Withdraw() {
                       placeholder="Enter amount"
                       className="w-full px-4 py-3 pl-8 pr-16 text-lg border border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
-                    <CurrencyRupeeIcon className="w-5 h-5 text-gray-400 absolute left-3 top-4" />
+                    <ArbiRupeeLogo variant="icon" width={20} height={20} className="absolute left-3 top-4 opacity-50" />
                     <span className="absolute right-3 top-4 text-sm text-gray-500">arbINR</span>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
