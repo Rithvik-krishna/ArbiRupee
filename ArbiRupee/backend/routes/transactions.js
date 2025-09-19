@@ -1,4 +1,4 @@
-// routes/transactions.js - Transaction routes for RupeeBridge
+// routes/transactions.js - Transaction routes for ArbiRupee
 const express = require('express');
 const { ethers } = require('ethers');
 const Transaction = require('../models/Transaction');
@@ -167,10 +167,10 @@ router.post('/deposit', authenticateWallet, validateTransaction, async (req, res
             currency: 'INR',
             status: 'pending',
             bankingInstructions: {
-              bankName: 'RupeeBridge Demo Bank',
+              bankName: 'ArbiRupee Demo Bank',
               accountNumber: '1234567890',
               ifscCode: 'DEMO0001234',
-              beneficiaryName: 'RupeeBridge India Ltd',
+              beneficiaryName: 'ArbiRupee India Ltd',
               reference: transactionId
             }
           }

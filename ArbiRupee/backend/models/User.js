@@ -1,4 +1,4 @@
-// models/User.js - User model for RupeeBridge
+// models/User.js - User model for ArbiRupee
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 

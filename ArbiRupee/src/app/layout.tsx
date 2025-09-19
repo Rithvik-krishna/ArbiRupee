@@ -16,20 +16,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RupeeBridge - Digital INR Gateway on Arbitrum",
+  title: "ArbiRupee - Digital INR Gateway on Arbitrum",
   description: "Seamlessly convert INR to crypto, earn yield, and transact globally with arbINR - India's digital rupee on Arbitrum blockchain.",
-  keywords: "RupeeBridge, arbINR, digital rupee, Arbitrum, DeFi, stablecoin, INR",
-  authors: [{ name: "RupeeBridge Team" }],
+  keywords: "ArbiRupee, arbINR, digital rupee, Arbitrum, DeFi, stablecoin, INR",
+  authors: [{ name: "ArbiRupee Team" }],
   openGraph: {
-    title: "RupeeBridge - Digital INR Gateway on Arbitrum",
+    title: "ArbiRupee - Digital INR Gateway on Arbitrum",
     description: "India's premier digital rupee platform on Arbitrum blockchain",
-    url: "https://rupeebridge.com",
-    siteName: "RupeeBridge",
+    url: "https://arbirupee.com",
+    siteName: "ArbiRupee",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "RupeeBridge - Digital INR Gateway",
+    title: "ArbiRupee - Digital INR Gateway",
     description: "Seamlessly convert INR to crypto on Arbitrum",
   },
 };

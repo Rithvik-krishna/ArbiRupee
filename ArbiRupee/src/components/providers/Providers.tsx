@@ -19,8 +19,8 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           theme={theme === 'dark' ? darkTheme() : lightTheme()}
           showRecentTransactions={true}
           appInfo={{
-            appName: 'RupeeBridge',
-            learnMoreUrl: 'https://github.com/rupeebridge'
+            appName: 'ArbiRupee',
+            learnMoreUrl: 'https://github.com/arbirupee'
           }}
         >
           {children}

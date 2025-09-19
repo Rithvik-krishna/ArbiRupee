@@ -4,7 +4,7 @@ import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { arbitrum, arbitrumSepolia } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
-  appName: 'RupeeBridge',
+  appName: 'ArbiRupee',
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'default-project-id',
   chains: [arbitrum, arbitrumSepolia],
   ssr: true,

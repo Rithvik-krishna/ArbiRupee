@@ -1,4 +1,4 @@
-// server.js - Main server file for RupeeBridge Backend
+// server.js - Main server file for ArbiRupee Backend
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
@@ -48,7 +48,7 @@ if (process.env.NODE_ENV !== 'production') {
 // MongoDB connection
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/rupeebridge';
+    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/arbirupee';
     await mongoose.connect(mongoURI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -67,7 +67,7 @@ connectDB();
 app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'OK',
-    message: 'RupeeBridge Backend is running',
+    message: 'ArbiRupee Backend is running',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
@@ -120,7 +120,7 @@ process.on('SIGINT', () => {
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`🚀 RupeeBridge Backend server running on port ${PORT}`);
+  console.log(`🚀 ArbiRupee Backend server running on port ${PORT}`);
   console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 CORS enabled for: http://localhost:3000, http://localhost:3001`);
 });

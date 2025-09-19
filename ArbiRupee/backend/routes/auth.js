@@ -13,7 +13,7 @@ router.post('/challenge', validateWalletAddress('walletAddress'), async (req, re
     // Generate a unique challenge message
     const timestamp = Date.now();
     const nonce = Math.random().toString(36).substring(7);
-    const challenge = `Sign this message to authenticate with RupeeBridge.\n\nTimestamp: ${timestamp}\nNonce: ${nonce}\nWallet: ${walletAddress}`;
+    const challenge = `Sign this message to authenticate with ArbiRupee.\n\nTimestamp: ${timestamp}\nNonce: ${nonce}\nWallet: ${walletAddress}`;
     
     res.json({
       success: true,

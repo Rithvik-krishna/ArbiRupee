@@ -1,4 +1,4 @@
-// models/Transaction.js - Transaction model for RupeeBridge
+// models/Transaction.js - Transaction model for ArbiRupee
 const mongoose = require('mongoose');
 
 const transactionSchema = new mongoose.Schema({

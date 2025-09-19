@@ -134,7 +134,7 @@ export default function Deposit() {
               <CurrencyRupeeIcon className="w-5 h-5 text-white" />
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              RupeeBridge
+              ArbiRupee
             </span>
           </div>
         </motion.div>
@@ -316,7 +316,7 @@ export default function Deposit() {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Bank Name:</span>
-                    <span className="font-semibold">RupeeBridge Bank</span>
+                    <span className="font-semibold">ArbiRupee Bank</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600 dark:text-gray-400">Account Number:</span>

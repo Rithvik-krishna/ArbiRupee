@@ -127,7 +127,7 @@ export default function Home() {
             <CurrencyRupeeIcon className="w-5 h-5 text-white" />
           </div>
           <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            RupeeBridge
+            ArbiRupee
           </span>
         </motion.div>
 
@@ -237,7 +237,7 @@ export default function Home() {
           className="text-center mb-16"
         >
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-6">
-            Why Choose <span className="text-blue-600">RupeeBridge</span>?
+            Why Choose <span className="text-blue-600">ArbiRupee</span>?
           </h2>
           <p className="text-xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto">
             Experience the future of digital payments with cutting-edge blockchain technology 
@@ -317,11 +317,11 @@ export default function Home() {
                 <CurrencyRupeeIcon className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                RupeeBridge
+                ArbiRupee
               </span>
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              © 2025 RupeeBridge. Bridging Traditional Finance with DeFi.
+              © 2025 ArbiRupee. Bridging Traditional Finance with DeFi.
             </div>
           </div>
         </div>
