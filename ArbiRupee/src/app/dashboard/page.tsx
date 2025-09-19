@@ -50,45 +50,23 @@ export default function Dashboard() {
   const [balanceVisible, setBalanceVisible] = useState(true);
   const [arbINRBalance, setArbINRBalance] = useState(0);
   const [isBalanceLoading, setIsBalanceLoading] = useState(true);
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: '1',
-      type: 'deposit',
-      amount: '1000',
-      status: 'completed',
-      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-      to: address
-    },
-    {
-      id: '2',
-      type: 'transfer',
-      amount: '250',
-      status: 'completed',
-      timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000), // 5 hours ago
-      from: address,
-      to: '0x742d35Cc6634C0532925a3b8D7389c7abb1F1c1e'
-    },
-    {
-      id: '3',
-      type: 'withdraw',
-      amount: '500',
-      status: 'pending',
-      timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 minutes ago
-      from: address
-    }
-  ]);
-
-  const usdValue = '14.40'; // Assuming 1 INR = 0.012 USD
-  const inrValue = '1,200';
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [usdValue, setUsdValue] = useState('0.00');
+  const [inrValue, setInrValue] = useState('0');
+  const [totalEarned, setTotalEarned] = useState('0.00');
+  const [rewardsPoints, setRewardsPoints] = useState(0);
+  const [isDataLoading, setIsDataLoading] = useState(true);
 
   useEffect(() => {
     if (!isConnected) {
       router.push('/');
     } else {
+      setIsDataLoading(true);
       fetchUserBalance();
       fetchTransactions();
+      fetchUserStats();
     }
-  }, [isConnected, router]);
+  }, [isConnected, router, address]);
 
   const fetchUserBalance = async () => {
     try {
@@ -97,9 +75,14 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         setArbINRBalance(data.data.balance);
+        setInrValue(data.data.balance.toFixed(2));
+        setUsdValue(data.data.usdValue || '0.00');
       }
     } catch (error) {
       console.error('Failed to fetch balance:', error);
+      setArbINRBalance(0);
+      setInrValue('0');
+      setUsdValue('0.00');
     } finally {
       setIsBalanceLoading(false);
     }
@@ -117,10 +100,37 @@ export default function Dashboard() {
         const data = await response.json();
         if (data.success && data.data.transactions) {
           setTransactions(data.data.transactions);
+        } else {
+          setTransactions([]);
         }
       }
     } catch (error) {
       console.error('Failed to fetch transactions:', error);
+      setTransactions([]);
+    }
+  };
+
+  const fetchUserStats = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/transactions/user/stats`, {
+        headers: {
+          'x-wallet-address': address || '',
+          'Content-Type': 'application/json'
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data.userStats) {
+          setTotalEarned(data.data.userStats.totalEarned || '0.00');
+          setRewardsPoints(data.data.userStats.rewardsPoints || 0);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user stats:', error);
+      setTotalEarned('0.00');
+      setRewardsPoints(0);
+    } finally {
+      setIsDataLoading(false);
     }
   };
 
@@ -318,8 +328,10 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Earned</h4>
-                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">₹142.50</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">+12.5% this month</p>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {isDataLoading ? '•••••' : `₹${totalEarned}`}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">From DeFi activities</p>
                 </div>
                 <ChartBarIcon className="w-8 h-8 text-green-500" />
               </div>
@@ -329,8 +341,12 @@ export default function Dashboard() {
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Rewards Points</h4>
-                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">2,580</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Gold tier</p>
+                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    {isDataLoading ? '•••••' : rewardsPoints.toLocaleString()}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {rewardsPoints >= 1000 ? 'Gold tier' : rewardsPoints >= 500 ? 'Silver tier' : 'Bronze tier'}
+                  </p>
                 </div>
                 <TrophyIcon className="w-8 h-8 text-purple-500" />
               </div>

@@ -1,6 +1,7 @@
 // routes/contracts.js - Smart contract interaction routes
 const express = require('express');
-const { contractService } = require('../services/contractService');
+const { blockchainService } = require('../services/blockchainService');
+const { realtimeService } = require('../services/realtimeService');
 const { authenticateWallet } = require('../middleware/auth');
 const { validateAmount, validateWalletAddress } = require('../middleware/validation');
 const router = express.Router();
@@ -8,7 +9,7 @@ const router = express.Router();
 // GET /api/contracts/info - Get contract information
 router.get('/info', async (req, res) => {
   try {
-    const contractInfo = await contractService.getContractInfo();
+    const contractInfo = await blockchainService.getContractInfo();
     
     res.json({
       success: true,
@@ -29,14 +30,16 @@ router.get('/balance/:address', async (req, res) => {
   try {
     const { address } = req.params;
     
-    if (!contractService.isValidAddress(address)) {
+    if (!blockchainService.isValidAddress(address)) {
       return res.status(400).json({
         success: false,
         message: 'Invalid wallet address'
       });
     }
     
-    const balance = await contractService.getTokenBalance(address);
+    const balance = await blockchainService.getTokenBalance(address);
+    const exchangeRates = realtimeService.getExchangeRates();
+    const usdValue = realtimeService.inrToUsd(balance);
     
     res.json({
       success: true,
@@ -44,7 +47,7 @@ router.get('/balance/:address', async (req, res) => {
         address,
         balance: balance,
         balanceFormatted: balance.toLocaleString(),
-        usdValue: (balance * 0.012).toFixed(2),
+        usdValue: usdValue,
         inrValue: balance.toFixed(2)
       }
     });
@@ -70,12 +73,12 @@ router.post('/validate-address', async (req, res) => {
       });
     }
     
-    const isValid = contractService.isValidAddress(address);
+    const isValid = blockchainService.isValidAddress(address);
     
     let additionalInfo = {};
     if (isValid) {
       try {
-        const balance = await contractService.getTokenBalance(address);
+        const balance = await blockchainService.getTokenBalance(address);
         additionalInfo = {
           hasBalance: balance > 0,
           balance: balance
@@ -112,20 +115,11 @@ router.get('/transaction/:txHash', async (req, res) => {
   try {
     const { txHash } = req.params;
     
-    // Mock transaction details (in production, query actual blockchain)
-    const mockTransaction = {
-      hash: txHash,
-      status: 'confirmed',
-      blockNumber: Math.floor(Math.random() * 1000000) + 19000000,
-      gasUsed: Math.floor(Math.random() * 50000) + 21000,
-      gasPrice: '0.0001',
-      timestamp: new Date().toISOString(),
-      confirmations: Math.floor(Math.random() * 100) + 12
-    };
+    const transactionDetails = await blockchainService.getTransactionDetails(txHash);
     
     res.json({
       success: true,
-      data: mockTransaction
+      data: transactionDetails
     });
   } catch (error) {
     console.error('Get transaction error:', error);
@@ -140,19 +134,7 @@ router.get('/transaction/:txHash', async (req, res) => {
 // GET /api/contracts/stats - Get contract statistics
 router.get('/stats', async (req, res) => {
   try {
-    // Mock contract statistics
-    const stats = {
-      totalSupply: '50000000',
-      totalHolders: 10847,
-      totalTransactions: 156789,
-      marketCap: '600000000', // $600M
-      price: {
-        usd: 0.012,
-        inr: 1.0
-      },
-      volume24h: '2400000',
-      circulating: '48500000'
-    };
+    const stats = realtimeService.getContractStats();
     
     res.json({
       success: true,
@@ -173,33 +155,23 @@ router.post('/estimate-gas', authenticateWallet, async (req, res) => {
   try {
     const { operation, amount, toAddress } = req.body;
     
-    // Mock gas estimation
-    let estimatedGas;
-    switch (operation) {
-      case 'transfer':
-        estimatedGas = 21000 + Math.floor(Math.random() * 5000);
-        break;
-      case 'mint':
-        estimatedGas = 45000 + Math.floor(Math.random() * 10000);
-        break;
-      case 'burn':
-        estimatedGas = 35000 + Math.floor(Math.random() * 8000);
-        break;
-      default:
-        estimatedGas = 25000;
-    }
+    const gasEstimate = await blockchainService.estimateGas(operation, {
+      to: toAddress,
+      amount: amount,
+      from: req.user.walletAddress
+    });
     
-    const gasPrice = 0.0001; // Mock gas price in ETH
-    const estimatedCost = estimatedGas * gasPrice;
+    const exchangeRates = realtimeService.getExchangeRates();
+    const estimatedCostUSD = realtimeService.inrToUsd(gasEstimate.estimatedCost);
     
     res.json({
       success: true,
       data: {
         operation,
-        estimatedGas,
-        gasPrice,
-        estimatedCost: estimatedCost.toFixed(6),
-        estimatedCostUSD: (estimatedCost * 2000).toFixed(2) // Assuming 1 ETH = $2000
+        estimatedGas: gasEstimate.gasEstimate,
+        gasPrice: gasEstimate.gasPrice,
+        estimatedCost: gasEstimate.estimatedCost,
+        estimatedCostUSD: estimatedCostUSD
       }
     });
   } catch (error) {
@@ -217,50 +189,16 @@ router.get('/events', async (req, res) => {
   try {
     const { limit = 50, offset = 0, eventType } = req.query;
     
-    // Mock recent events
-    const mockEvents = [
-      {
-        type: 'Transfer',
-        from: '0x742d35Cc6634C0532925a3b8D7389c7abb1F1c1e',
-        to: '0x8ba1f109551bD432803012645Hac136c78c1ba1f',
-        amount: '1000.00',
-        txHash: '0x' + Math.random().toString(16).slice(2) + Date.now().toString(16),
-        blockNumber: Math.floor(Math.random() * 1000000) + 19000000,
-        timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString()
-      },
-      {
-        type: 'Mint',
-        to: '0x8ba1f109551bD432803012645Hac136c78c1ba1f',
-        amount: '2500.00',
-        txHash: '0x' + Math.random().toString(16).slice(2) + Date.now().toString(16),
-        blockNumber: Math.floor(Math.random() * 1000000) + 19000000,
-        timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString()
-      },
-      {
-        type: 'Burn',
-        from: '0x742d35Cc6634C0532925a3b8D7389c7abb1F1c1e',
-        amount: '500.00',
-        txHash: '0x' + Math.random().toString(16).slice(2) + Date.now().toString(16),
-        blockNumber: Math.floor(Math.random() * 1000000) + 19000000,
-        timestamp: new Date(Date.now() - Math.random() * 86400000).toISOString()
-      }
-    ];
+    const events = await blockchainService.getRecentEvents(eventType || 'Transfer');
     
-    let filteredEvents = mockEvents;
-    if (eventType) {
-      filteredEvents = mockEvents.filter(event => 
-        event.type.toLowerCase() === eventType.toLowerCase()
-      );
-    }
-    
-    const paginatedEvents = filteredEvents.slice(offset, offset + parseInt(limit));
+    const paginatedEvents = events.slice(offset, offset + parseInt(limit));
     
     res.json({
       success: true,
       data: {
         events: paginatedEvents,
         pagination: {
-          total: filteredEvents.length,
+          total: events.length,
           limit: parseInt(limit),
           offset: parseInt(offset)
         }

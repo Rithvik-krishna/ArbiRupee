@@ -7,29 +7,34 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
 
+// Import configuration
+const config = require('./config/environment');
+
+// Import services
+const { blockchainService } = require('./services/blockchainService');
+const { paymentService } = require('./services/paymentService');
+const { realtimeService } = require('./services/realtimeService');
+
 // Import routes
 const authRoutes = require('./routes/auth');
-const transactionRoutes = require('./routes/transactions');
+const transactionRoutes = require('./routes/transactions-real'); // Use real transactions
 const userRoutes = require('./routes/users');
 const contractRoutes = require('./routes/contracts');
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = config.server.port;
 
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:3000',
-    'http://localhost:3001'
-  ],
+  origin: config.security.corsOrigins,
   credentials: true
 }));
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: config.security.rateLimit.windowMs,
+  max: config.security.rateLimit.max,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -41,27 +46,48 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
 // Logging
-if (process.env.NODE_ENV !== 'production') {
+if (config.server.nodeEnv !== 'production') {
   app.use(morgan('dev'));
 }
 
 // MongoDB connection
 const connectDB = async () => {
   try {
-    const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/arbirupee';
-    await mongoose.connect(mongoURI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(config.database.uri, config.database.options);
     console.log('✅ MongoDB connected successfully');
   } catch (error) {
     console.error('❌ MongoDB connection failed:', error.message);
-    console.log('⚠️  Running in demo mode without database');
+    console.log('❌ Database connection is required for production');
+    process.exit(1);
   }
 };
 
-// Connect to database
-connectDB();
+// Initialize services
+const initializeServices = async () => {
+  try {
+    console.log('🚀 Initializing ArbiRupee services...');
+    
+    // Connect to database
+    await connectDB();
+    
+    // Initialize blockchain service
+    await blockchainService.initialize();
+    
+    // Initialize payment service
+    await paymentService.initialize();
+    
+    // Initialize real-time service
+    await realtimeService.initialize();
+    
+    console.log('✅ All services initialized successfully');
+  } catch (error) {
+    console.error('❌ Service initialization failed:', error.message);
+    process.exit(1);
+  }
+};
+
+// Initialize services
+initializeServices();
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -121,8 +147,10 @@ process.on('SIGINT', () => {
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 ArbiRupee Backend server running on port ${PORT}`);
-  console.log(`📱 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 CORS enabled for: http://localhost:3000, http://localhost:3001`);
+  console.log(`📱 Environment: ${config.server.nodeEnv}`);
+  console.log(`🌐 CORS enabled for: ${config.security.corsOrigins.join(', ')}`);
+  console.log(`🔗 Blockchain Network: ${config.blockchain.network}`);
+  console.log(`💳 Payment Gateway: ${config.payment.razorpay.keyId ? 'Configured' : 'Not configured'}`);
 });
 
 module.exports = app;
