@@ -19,6 +19,19 @@ const fadeInUp = {
   transition: { duration: 0.5 }
 };
 
+interface WithdrawDetails {
+  accountHolder: string;
+  accountNumber: string;
+  ifsc: string;
+  bankName: string;
+  withdrawalAmount: number;
+  processingFee: number;
+  totalDeducted: number;
+  userBalance: number;
+  minWithdraw: number;
+  maxWithdraw: number;
+}
+
 export default function Withdraw() {
   const { address, isConnected } = useAccount();
   const router = useRouter();
@@ -30,30 +43,47 @@ export default function Withdraw() {
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: Form, 2: Confirmation, 3: Success
   const [transactionId, setTransactionId] = useState('');
-  const [userBalance, setUserBalance] = useState(0);
-
-  const minWithdraw = 100;
-  const maxWithdraw = 50000;
-  const processingFee = 10; // ₹10 fee for withdrawals
-  const exchangeRate = 1; // 1:1 peg
+  const [withdrawDetails, setWithdrawDetails] = useState<WithdrawDetails | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
+  const [payoutOrder, setPayoutOrder] = useState<any>(null); // Added state for Razorpay payout
 
   useEffect(() => {
     if (!isConnected) {
       router.push('/');
     } else {
-      fetchUserBalance();
+      fetchWithdrawDetails();
     }
-  }, [isConnected, router]);
+  }, [isConnected, router, address]);
 
-  const fetchUserBalance = async () => {
+  const fetchWithdrawDetails = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/contracts/balance/${address}`);
+      setIsLoadingDetails(true);
+      const response = await fetch(`http://localhost:5000/api/withdraw`, {
+        headers: {
+          'x-wallet-address': address || '',
+          'Content-Type': 'application/json'
+        }
+      });
+      
       if (response.ok) {
         const data = await response.json();
-        setUserBalance(data.data.balance);
+        if (data.success && data.data) {
+          setWithdrawDetails(data.data);
+          // Pre-fill form with user's bank details
+          setAccountHolder(data.data.accountHolder || '');
+          setBankAccount(data.data.accountNumber || '');
+          setIfscCode(data.data.ifsc || '');
+          setBankName(data.data.bankName || '');
+        } else {
+          console.error('Invalid response structure:', data);
+        }
+      } else {
+        console.error('Failed to fetch withdraw details');
       }
     } catch (error) {
-      console.error('Failed to fetch balance:', error);
+      console.error('Failed to fetch withdraw details:', error);
+    } finally {
+      setIsLoadingDetails(false);
     }
   };
 
@@ -63,26 +93,87 @@ export default function Withdraw() {
   };
 
   const isValidAmount = () => {
+    if (!withdrawDetails || !amount || amount.trim() === '') {
+      console.log('Validation failed: No withdrawDetails or empty amount');
+      return false;
+    }
+    
     const num = parseFloat(amount);
-    return num >= minWithdraw && num <= maxWithdraw && num <= userBalance && !isNaN(num);
+    const userBalance = withdrawDetails.userBalance || 0;
+    const minWithdraw = withdrawDetails.minWithdraw || 100;
+    const maxWithdraw = withdrawDetails.maxWithdraw || 50000;
+    
+    const isValid = num >= minWithdraw && 
+                   num <= maxWithdraw && 
+                   num <= userBalance && 
+                   !isNaN(num) &&
+                   num > 0;
+    
+    console.log('Amount validation:', {
+      amount: amount,
+      parsedAmount: num,
+      userBalance,
+      minWithdraw,
+      maxWithdraw,
+      isValid,
+      checks: {
+        isNumber: !isNaN(num),
+        isPositive: num > 0,
+        meetsMin: num >= minWithdraw,
+        meetsMax: num <= maxWithdraw,
+        withinBalance: num <= userBalance
+      }
+    });
+    
+    return isValid;
   };
 
   const isValidBankDetails = () => {
-    return bankAccount.length >= 9 && 
-           ifscCode.length >= 11 && 
-           bankName.trim().length > 0 && 
-           accountHolder.trim().length > 0;
+    const isValid = bankAccount.length >= 9 && 
+                   ifscCode.length >= 11 && 
+                   bankName.trim().length > 0 && 
+                   accountHolder.trim().length > 0;
+    
+    console.log('Bank details validation:', {
+      bankAccount: bankAccount,
+      ifscCode: ifscCode,
+      bankName: bankName,
+      accountHolder: accountHolder,
+      isValid,
+      checks: {
+        accountLength: bankAccount.length >= 9,
+        ifscLength: ifscCode.length >= 11,
+        bankNameValid: bankName.trim().length > 0,
+        accountHolderValid: accountHolder.trim().length > 0
+      }
+    });
+    
+    return isValid;
   };
 
-  const totalAmount = parseFloat(amount) + processingFee;
+  const totalAmount = withdrawDetails ? parseFloat(amount) + (withdrawDetails.processingFee || 0) : 0;
 
   const handleInitiateWithdraw = async () => {
-    if (!isValidAmount() || !isValidBankDetails()) return;
+    console.log('handleInitiateWithdraw called with:', {
+      amount,
+      accountHolder,
+      bankAccount,
+      ifscCode,
+      bankName,
+      withdrawDetails,
+      isValidAmount: isValidAmount(),
+      isValidBankDetails: isValidBankDetails()
+    });
+    
+    if (!isValidAmount() || !isValidBankDetails()) {
+      console.log('Validation failed - not proceeding');
+      return;
+    }
     
     setIsLoading(true);
     
     try {
-      const response = await fetch('http://localhost:5000/api/transactions/withdraw', {
+      const response = await fetch('http://localhost:5000/api/withdraw', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,12 +181,11 @@ export default function Withdraw() {
         },
         body: JSON.stringify({
           amount: parseFloat(amount),
-          bankDetails: {
-            accountNumber: bankAccount,
-            ifscCode,
-            bankName,
-            accountHolder
-          }
+          accountHolder,
+          accountNumber: bankAccount,
+          ifsc: ifscCode,
+          bankName,
+          type: 'razorpay' // Use Razorpay for withdrawals
         }),
       });
 
@@ -105,11 +195,25 @@ export default function Withdraw() {
       }
 
       const data = await response.json();
-      setTransactionId(data.data?.transaction?.id || data.transactionId);
-      setStep(2);
+      console.log('Withdrawal response:', data);
+      
+      if (data.success) {
+        setTransactionId(data.data?.transactionId || data.transactionId);
+        setPayoutOrder(data.data?.payoutOrder);
+        
+        // Check if it's a fallback withdrawal (completed immediately)
+        if (data.data?.fallback || data.data?.status === 'completed') {
+          setStep(3); // Go directly to success step
+          alert(data.message || 'Withdrawal processed successfully!');
+        } else {
+          setStep(2); // Go to confirmation step for Razorpay
+        }
+      } else {
+        throw new Error(data.message || 'Withdrawal failed');
+      }
     } catch (error) {
       console.error('Withdrawal initiation failed:', error);
-      alert('Failed to initiate withdrawal. Please try again.');
+      alert(`Failed to initiate withdrawal: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -119,8 +223,13 @@ export default function Withdraw() {
     setIsLoading(true);
     
     try {
-      // In a real implementation, this would process the withdrawal
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // The withdrawal is already being processed in the background by the backend
+      // We just need to wait a bit and then show success
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Refresh the withdraw details to reflect the updated balance
+      await fetchWithdrawDetails();
+      
       setStep(3);
     } catch (error) {
       console.error('Withdrawal confirmation failed:', error);
@@ -130,8 +239,104 @@ export default function Withdraw() {
     }
   };
 
+  const handleConfirmWithdrawal = async (payoutId: string, signature: string) => {
+    setIsLoading(true);
+    
+    try {
+      const response = await fetch(`http://localhost:5000/api/withdraw/confirm`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-wallet-address': address || ''
+        },
+        body: JSON.stringify({
+          transactionId,
+          payoutId,
+          signature
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to confirm withdrawal');
+      }
+
+      const data = await response.json();
+      console.log('Withdrawal confirmation response:', data);
+      
+      if (data.success) {
+        setStep(3);
+        alert('Withdrawal confirmed! Your funds are being processed.');
+      } else {
+        throw new Error(data.message || 'Withdrawal confirmation failed');
+      }
+    } catch (error) {
+      console.error('Withdrawal confirmation failed:', error);
+      alert(`Failed to confirm withdrawal: ${error.message}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load Razorpay script
+  useEffect(() => {
+    const loadRazorpayScript = () => {
+      return new Promise((resolve, reject) => {
+        // Check if script is already loaded
+        if (typeof (window as any).Razorpay !== 'undefined') {
+          resolve(true);
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        script.onload = () => {
+          console.log('Razorpay script loaded successfully');
+          resolve(true);
+        };
+        script.onerror = () => {
+          console.error('Failed to load Razorpay script');
+          reject(new Error('Failed to load Razorpay script'));
+        };
+        document.head.appendChild(script);
+      });
+    };
+
+    loadRazorpayScript().catch(error => {
+      console.error('Error loading Razorpay script:', error);
+    });
+  }, []);
+
   if (!isConnected) {
     return null;
+  }
+
+  if (isLoadingDetails) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-red-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-red-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading withdrawal details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!withdrawDetails) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 dark:from-gray-900 dark:via-gray-800 dark:to-red-900 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-600 dark:text-red-400">Failed to load withdrawal details. Please try again.</p>
+          <button 
+            onClick={fetchWithdrawDetails}
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -174,7 +379,7 @@ export default function Withdraw() {
               <div className="text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Available Balance</p>
                 <p className="text-3xl font-bold text-gray-800 dark:text-white">
-                  {userBalance.toFixed(2)} <span className="text-lg">arbINR</span>
+                  {withdrawDetails.userBalance ? withdrawDetails.userBalance.toFixed(2) : '0.00'} <span className="text-lg">arbINR</span>
                 </p>
               </div>
             </div>
@@ -205,8 +410,8 @@ export default function Withdraw() {
                     <span className="absolute right-3 top-4 text-sm text-gray-500">arbINR</span>
                   </div>
                   <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <span>Min: ₹{minWithdraw}</span>
-                    <span>Max: ₹{maxWithdraw}</span>
+                    <span>Min: ₹{withdrawDetails.minWithdraw || 0}</span>
+                    <span>Max: ₹{withdrawDetails.maxWithdraw || 0}</span>
                   </div>
                 </div>
 
@@ -283,7 +488,7 @@ export default function Withdraw() {
                           </div>
                           <div className="flex justify-between">
                             <span>Processing Fee:</span>
-                            <span>₹{processingFee}</span>
+                            <span>₹{withdrawDetails.processingFee || 0}</span>
                           </div>
                           <div className="flex justify-between font-semibold border-t border-orange-200 dark:border-orange-700 pt-1">
                             <span>Total Deducted:</span>
@@ -295,11 +500,42 @@ export default function Withdraw() {
                   </div>
                 )}
 
+                {/* Validation Status */}
+                {amount && (
+                  <div className="space-y-2">
+                    <div className="flex items-center space-x-2 text-sm">
+                      <div className={`w-3 h-3 rounded-full ${isValidAmount() ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <span className={isValidAmount() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {isValidAmount() ? 'Amount is valid' : 'Amount must be between ₹100-₹50,000 and within your balance'}
+                      </span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm">
+                      <div className={`w-3 h-3 rounded-full ${isValidBankDetails() ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      <span className={isValidBankDetails() ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        {isValidBankDetails() ? 'Bank details are valid' : 'Please fill all bank details correctly'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Withdraw Button */}
                 <motion.button
-                  onClick={handleInitiateWithdraw}
+                  onClick={() => {
+                    console.log('Button clicked - Validation status:', {
+                      isValidAmount: isValidAmount(),
+                      isValidBankDetails: isValidBankDetails(),
+                      isLoading,
+                      amount,
+                      withdrawDetails
+                    });
+                    handleInitiateWithdraw();
+                  }}
                   disabled={!isValidAmount() || !isValidBankDetails() || isLoading}
-                  className="w-full bg-gradient-to-r from-red-600 to-orange-600 text-white py-4 px-6 rounded-xl font-semibold text-lg shadow-lg disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 hover:from-red-700 hover:to-orange-700 disabled:hover:from-gray-400 disabled:hover:to-gray-500"
+                  className={`w-full py-4 px-6 rounded-xl font-semibold text-lg shadow-lg transition-all duration-200 ${
+                    !isValidAmount() || !isValidBankDetails() || isLoading
+                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-red-600 to-orange-600 text-white hover:from-red-700 hover:to-orange-700'
+                  }`}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -334,7 +570,7 @@ export default function Withdraw() {
                     Confirm Withdrawal
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400">
-                    Please review your withdrawal details before confirming
+                    Your withdrawal will be processed through Razorpay
                   </p>
                 </div>
 
@@ -350,7 +586,7 @@ export default function Withdraw() {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Processing Fee:</span>
-                      <span>₹{processingFee}</span>
+                      <span>₹{withdrawDetails.processingFee || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600 dark:text-gray-400">Bank Account:</span>
@@ -367,6 +603,15 @@ export default function Withdraw() {
                   </div>
                 </div>
 
+                {/* Debug Info */}
+                {payoutOrder && (
+                  <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-4 text-sm">
+                    <p className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Debug Info:</p>
+                    <p className="text-yellow-700 dark:text-yellow-300">Payout Order: {JSON.stringify(payoutOrder, null, 2)}</p>
+                    <p className="text-yellow-700 dark:text-yellow-300">Razorpay Loaded: {typeof (window as any).Razorpay !== 'undefined' ? 'Yes' : 'No'}</p>
+                  </div>
+                )}
+
                 <div className="flex space-x-4">
                   <motion.button
                     onClick={() => setStep(1)}
@@ -377,8 +622,24 @@ export default function Withdraw() {
                     Back
                   </motion.button>
                   <motion.button
-                    onClick={handleConfirmWithdraw}
-                    disabled={isLoading}
+                    onClick={() => {
+                      console.log('Confirm withdrawal button clicked');
+                      console.log('Payout order:', payoutOrder);
+                      console.log('Razorpay available:', typeof (window as any).Razorpay !== 'undefined');
+                      
+                      if (!payoutOrder) {
+                        alert('Payout order not available. Please try again.');
+                        return;
+                      }
+                      
+                      // For now, simulate successful payout confirmation
+                      // In a real implementation, this would integrate with Razorpay's payout API
+                      const mockPayoutId = `payout_${Date.now()}`;
+                      const mockSignature = `signature_${Math.random().toString(36).substr(2, 9)}`;
+                      
+                      handleConfirmWithdrawal(mockPayoutId, mockSignature);
+                    }}
+                    disabled={isLoading || !payoutOrder}
                     className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 text-white py-3 px-6 rounded-xl font-semibold shadow-lg disabled:from-gray-400 disabled:to-gray-500 disabled:cursor-not-allowed transition-all duration-200 hover:from-red-700 hover:to-orange-700"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}

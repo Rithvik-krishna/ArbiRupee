@@ -43,15 +43,11 @@ export default function Transfer() {
 
   const fetchBalance = async () => {
     try {
-      const response = await fetch('http://localhost:5000/api/balance', {
-        headers: {
-          'x-wallet-address': address || ''
-        }
-      });
+      const response = await fetch(`http://localhost:5000/api/contracts/balance/${address}`);
       
       if (response.ok) {
         const data = await response.json();
-        setBalance(data.balance || 0);
+        setBalance(data.data?.balance || 0);
       }
     } catch (error) {
       console.error('Failed to fetch balance:', error);

@@ -18,6 +18,7 @@ const { realtimeService } = require('./services/realtimeService');
 // Import routes
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions-real'); // Use real transactions
+const withdrawRoutes = require('./routes/withdraw'); // Separate withdraw routes
 const userRoutes = require('./routes/users');
 const contractRoutes = require('./routes/contracts');
 
@@ -102,6 +103,7 @@ app.get('/health', (req, res) => {
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/withdraw', withdrawRoutes); // Separate withdraw routes
 app.use('/api/users', userRoutes);
 app.use('/api/contracts', contractRoutes);
 

@@ -123,7 +123,7 @@ const transactionSchema = new mongoose.Schema({
     accountNumber: String,
     ifscCode: String,
     upiId: String,
-    paymentMethod: { type: String, enum: ['bank_transfer', 'upi', 'card'] },
+    paymentMethod: { type: String, enum: ['bank_transfer', 'upi', 'card', 'razorpay'] },
     processingTime: Number // in minutes
   },
   // Blockchain details

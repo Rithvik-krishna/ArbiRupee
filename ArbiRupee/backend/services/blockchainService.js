@@ -48,27 +48,52 @@ class BlockchainService {
       const rpcUrl = this.network === 'mainnet' ? this.arbitrumRpcUrl : this.arbitrumSepoliaRpcUrl;
       this.provider = new ethers.JsonRpcProvider(rpcUrl);
       
-      // Initialize wallet
-      this.wallet = new ethers.Wallet(this.privateKey, this.provider);
+      // Initialize wallet only if private key is valid
+      if (this.privateKey && this.privateKey !== '0xyour_private_key_here' && this.privateKey.length === 66) {
+        this.wallet = new ethers.Wallet(this.privateKey, this.provider);
+      } else {
+        console.log('⚠️  Private key not configured or invalid - wallet operations disabled');
+        this.wallet = null;
+      }
       
-      // Initialize contract
-      this.arbINRContract = new ethers.Contract(
-        this.arbINRContractAddress,
-        arbINRABI,
-        this.wallet
-      );
+      // Initialize contract only if address is valid
+      if (this.arbINRContractAddress && this.arbINRContractAddress !== '0xyour_contract_address_here') {
+        if (this.wallet) {
+          this.arbINRContract = new ethers.Contract(
+            this.arbINRContractAddress,
+            arbINRABI,
+            this.wallet
+          );
+        } else {
+          this.arbINRContract = new ethers.Contract(
+            this.arbINRContractAddress,
+            arbINRABI,
+            this.provider
+          );
+        }
 
-      // Verify contract connection
-      const contractName = await this.arbINRContract.name();
-      const contractSymbol = await this.arbINRContract.symbol();
-      const contractDecimals = await this.arbINRContract.decimals();
+        // Verify contract connection
+        try {
+          const contractName = await this.arbINRContract.name();
+          const contractSymbol = await this.arbINRContract.symbol();
+          const contractDecimals = await this.arbINRContract.decimals();
+          console.log(`✅ Contract connected: ${contractName} (${contractSymbol}) - ${contractDecimals} decimals`);
+        } catch (error) {
+          console.log('⚠️  Contract address not deployed or invalid - read-only mode');
+          this.arbINRContract = null;
+        }
+      } else {
+        console.log('⚠️  Contract address not configured - read-only mode');
+        this.arbINRContract = null;
+      }
 
       this.initialized = true;
       console.log(`✅ Blockchain Service initialized successfully`);
-      console.log(`📄 Contract: ${contractName} (${contractSymbol}) - ${contractDecimals} decimals`);
       console.log(`🌐 Network: ${this.network}`);
       console.log(`📍 Contract Address: ${this.arbINRContractAddress}`);
-      console.log(`👤 Wallet Address: ${this.wallet.address}`);
+      if (this.wallet) {
+        console.log(`👤 Wallet Address: ${this.wallet.address}`);
+      }
 
       return true;
     } catch (error) {
@@ -87,6 +112,21 @@ class BlockchainService {
 
       if (!ethers.isAddress(walletAddress)) {
         throw new Error('Invalid wallet address');
+      }
+
+      if (!this.arbINRContract) {
+        console.log('⚠️  Contract not available - checking database balance');
+        // Return balance from database when contract is not deployed
+        const User = require('../models/User');
+        const user = await User.findOne({ walletAddress });
+        if (user && user.statistics) {
+          const totalDeposited = user.statistics.totalDeposited || 0;
+          const totalWithdrawn = user.statistics.totalWithdrawn || 0;
+          const balance = totalDeposited - totalWithdrawn;
+          console.log(`💰 Database balance for ${walletAddress}: ${balance} arbINR (Deposited: ${totalDeposited}, Withdrawn: ${totalWithdrawn})`);
+          return Math.max(0, balance); // Ensure balance is not negative
+        }
+        return 0;
       }
 
       const balance = await this.arbINRContract.balanceOf(walletAddress);
@@ -263,6 +303,20 @@ class BlockchainService {
         await this.initialize();
       }
 
+      if (!this.arbINRContract) {
+        return {
+          address: this.arbINRContractAddress || 'Not deployed',
+          name: 'ArbINR',
+          symbol: 'arbINR',
+          decimals: '18',
+          totalSupply: '0',
+          owner: 'Not deployed',
+          paused: false,
+          network: this.network,
+          status: 'Not deployed'
+        };
+      }
+
       const name = await this.arbINRContract.name();
       const symbol = await this.arbINRContract.symbol();
       const decimals = await this.arbINRContract.decimals();
@@ -331,6 +385,11 @@ class BlockchainService {
     try {
       if (!this.initialized) {
         await this.initialize();
+      }
+
+      if (!this.arbINRContract) {
+        console.log('⚠️  Contract not available - returning empty events');
+        return [];
       }
 
       const filter = this.arbINRContract.filters[eventName]();

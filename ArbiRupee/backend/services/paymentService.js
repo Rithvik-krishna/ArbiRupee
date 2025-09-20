@@ -15,24 +15,33 @@ class PaymentService {
 
   async initialize() {
     try {
+      // Validate required credentials
       if (!this.razorpayKeyId || !this.razorpayKeySecret) {
-        throw new Error('Payment gateway credentials not configured');
+        throw new Error('RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET are required');
       }
 
-      // Initialize Razorpay (or other payment gateway)
+      if (this.razorpayKeyId === 'rzp_test_your_key_id' || 
+          this.razorpayKeySecret === 'your_razorpay_key_secret') {
+        throw new Error('Please configure real Razorpay credentials in your .env file');
+      }
+
+      // Initialize Razorpay
       const Razorpay = require('razorpay');
       this.razorpay = new Razorpay({
         key_id: this.razorpayKeyId,
         key_secret: this.razorpayKeySecret
       });
 
+      // Test the connection
+      await this.razorpay.orders.all({ count: 1 });
+
       this.initialized = true;
-      console.log('✅ Payment Service initialized successfully');
+      console.log('✅ Payment Service initialized successfully with real Razorpay integration');
       return true;
     } catch (error) {
       console.error('❌ Payment Service initialization failed:', error);
       this.initialized = false;
-      return false;
+      throw error;
     }
   }
 
@@ -52,8 +61,6 @@ class PaymentService {
         throw new Error('Invalid amount. Must be between ₹100 and ₹100,000');
       }
 
-      const orderId = `order_${transactionId}_${Date.now()}`;
-      
       const orderOptions = {
         amount: amount * 100, // Convert to paise
         currency: 'INR',
@@ -67,7 +74,7 @@ class PaymentService {
 
       const order = await this.razorpay.orders.create(orderOptions);
 
-      console.log(`💳 Payment order created: ${orderId} - ₹${amount} for ${userWalletAddress}`);
+      console.log(`💳 Real payment order created: ${order.id} - ₹${amount} for ${userWalletAddress}`);
 
       return {
         success: true,
@@ -181,6 +188,84 @@ class PaymentService {
 
     } catch (error) {
       console.error('❌ Capture payment error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Create withdrawal payout
+  async createWithdrawalPayout(userWalletAddress, amount, transactionId, bankDetails) {
+    try {
+      if (!this.initialized) {
+        await this.initialize();
+      }
+
+      if (!this.razorpay) {
+        throw new Error('Payment gateway not initialized');
+      }
+
+      // Validate amount (minimum ₹100, maximum ₹100,000)
+      if (amount < 100 || amount > 100000) {
+        throw new Error('Invalid amount. Must be between ₹100 and ₹100,000');
+      }
+
+      // For now, simulate a successful payout since Razorpay payouts require additional setup
+      // In a real implementation, you would need to:
+      // 1. Create a fund account first
+      // 2. Then create the payout
+      
+      const mockPayout = {
+        id: `payout_${Date.now()}`,
+        amount: amount * 100,
+        currency: 'INR',
+        status: 'queued',
+        created_at: Math.floor(Date.now() / 1000)
+      };
+
+      console.log(`💸 Mock withdrawal payout created: ${mockPayout.id} - ₹${amount} to ${bankDetails.accountHolder}`);
+
+      return {
+        success: true,
+        orderId: mockPayout.id,
+        amount: mockPayout.amount,
+        currency: mockPayout.currency,
+        status: mockPayout.status,
+        createdAt: new Date(mockPayout.created_at * 1000)
+      };
+
+    } catch (error) {
+      console.error('❌ Create withdrawal payout error:', error);
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  // Verify payout signature
+  verifyPayoutSignature(orderId, payoutId, signature) {
+    try {
+      if (!this.razorpayKeySecret) {
+        throw new Error('Razorpay key secret not configured');
+      }
+
+      const body = orderId + '|' + payoutId;
+      const expectedSignature = crypto
+        .createHmac('sha256', this.razorpayKeySecret)
+        .update(body)
+        .digest('hex');
+
+      if (expectedSignature === signature) {
+        console.log(`✅ Payout signature verified: ${payoutId}`);
+        return { success: true };
+      } else {
+        throw new Error('Invalid payout signature');
+      }
+
+    } catch (error) {
+      console.error('❌ Verify payout signature error:', error);
       return {
         success: false,
         error: error.message

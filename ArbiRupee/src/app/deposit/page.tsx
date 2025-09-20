@@ -24,8 +24,9 @@ export default function Deposit() {
   const router = useRouter();
   const [amount, setAmount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1: Form, 2: Bank Transfer, 3: Confirmation
+  const [step, setStep] = useState(1); // 1: Form, 2: Payment, 3: Confirmation
   const [transactionId, setTransactionId] = useState('');
+  const [paymentOrder, setPaymentOrder] = useState<any>(null);
 
   const minDeposit = 100;
   const maxDeposit = 100000;
@@ -62,7 +63,7 @@ export default function Deposit() {
         },
         body: JSON.stringify({
           amount: parseFloat(amount),
-          type: 'bank_transfer'
+          type: 'razorpay'
         }),
       });
 
@@ -72,7 +73,10 @@ export default function Deposit() {
       }
 
       const data = await response.json();
-      setTransactionId(data.data?.transaction?.id || data.transactionId);
+      console.log('Deposit response:', data);
+      setTransactionId(data.data?.transactionId || data.data?.transaction?.id || data.transactionId);
+      setPaymentOrder(data.data?.paymentOrder);
+      console.log('Payment order set:', data.data?.paymentOrder);
       setStep(2);
     } catch (error) {
       console.error('Deposit initiation failed:', error);
@@ -82,7 +86,58 @@ export default function Deposit() {
     }
   };
 
-  const handleConfirmPayment = async () => {
+  const handleRazorpayPayment = () => {
+    if (!paymentOrder) {
+      console.error('No payment order available');
+      alert('Payment order not available. Please try again.');
+      return;
+    }
+
+    // Check if Razorpay is loaded
+    if (typeof (window as any).Razorpay === 'undefined') {
+      console.error('Razorpay script not loaded');
+      alert('Payment gateway not loaded. Please refresh the page and try again.');
+      return;
+    }
+
+    console.log('Opening Razorpay with order:', paymentOrder);
+
+    const options = {
+      key: 'rzp_test_RJjvHArNd8wRHG', // Your Razorpay Key ID
+      amount: paymentOrder.amount,
+      currency: paymentOrder.currency,
+      name: 'ArbiRupee',
+      description: 'Deposit INR to arbINR',
+      order_id: paymentOrder.orderId,
+      handler: async function (response: any) {
+        console.log('Razorpay payment response:', response);
+        await handleConfirmPayment(response.razorpay_payment_id, response.razorpay_signature);
+      },
+      prefill: {
+        name: 'User',
+        email: 'user@example.com',
+        contact: '9999999999'
+      },
+      theme: {
+        color: '#3B82F6'
+      },
+      modal: {
+        ondismiss: function() {
+          console.log('Payment modal dismissed');
+        }
+      }
+    };
+
+    try {
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error('Error opening Razorpay:', error);
+      alert('Failed to open payment gateway. Please try again.');
+    }
+  };
+
+  const handleConfirmPayment = async (paymentId: string, signature: string) => {
     setIsLoading(true);
     
     try {
@@ -93,22 +148,64 @@ export default function Deposit() {
           'x-wallet-address': address || ''
         },
         body: JSON.stringify({
-          transactionId
+          transactionId,
+          paymentId,
+          signature
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to confirm payment');
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to confirm payment');
       }
 
-      setStep(3);
+      const data = await response.json();
+      console.log('Payment confirmation response:', data);
+      
+      if (data.success) {
+        setStep(3);
+        // Show success message
+        alert('Payment confirmed! Your deposit is being processed.');
+      } else {
+        throw new Error(data.message || 'Payment confirmation failed');
+      }
     } catch (error) {
       console.error('Payment confirmation failed:', error);
-      alert('Failed to confirm payment. Please try again.');
+      alert(`Failed to confirm payment: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Load Razorpay script
+  useEffect(() => {
+    const loadRazorpayScript = () => {
+      return new Promise((resolve, reject) => {
+        // Check if script is already loaded
+        if (typeof (window as any).Razorpay !== 'undefined') {
+          resolve(true);
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+        script.async = true;
+        script.onload = () => {
+          console.log('Razorpay script loaded successfully');
+          resolve(true);
+        };
+        script.onerror = () => {
+          console.error('Failed to load Razorpay script');
+          reject(new Error('Failed to load Razorpay script'));
+        };
+        document.head.appendChild(script);
+      });
+    };
+
+    loadRazorpayScript().catch(error => {
+      console.error('Error loading Razorpay script:', error);
+    });
+  }, []);
 
   if (!isConnected) {
     return null;
@@ -270,7 +367,7 @@ export default function Deposit() {
               <div className="flex items-start space-x-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-xl">
                 <InformationCircleIcon className="w-5 h-5 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-yellow-700 dark:text-yellow-300">
-                  Your bank transfer will be processed within 5-10 minutes. arbINR tokens will be minted to your wallet upon confirmation.
+                  Your payment will be processed securely through Razorpay. arbINR tokens will be minted to your wallet upon confirmation.
                 </div>
               </div>
 
@@ -288,7 +385,7 @@ export default function Deposit() {
                     <span>Processing...</span>
                   </div>
                 ) : (
-                  'Continue to Bank Transfer'
+                  'Continue to Payment'
                 )}
               </motion.button>
             </div>
@@ -297,14 +394,14 @@ export default function Deposit() {
           {step === 2 && (
             <div className="space-y-6">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
-                Complete Bank Transfer
+                Complete Payment
               </h2>
 
-              {/* Transaction Details */}
+              {/* Payment Details */}
               <div className="bg-gray-50 dark:bg-gray-700 rounded-xl p-6 space-y-4">
                 <div className="text-center">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    Transfer Details
+                    Payment Summary
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Transaction ID: <span className="font-mono">{transactionId}</span>
@@ -313,37 +410,51 @@ export default function Deposit() {
 
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Bank Name:</span>
-                    <span className="font-semibold">ArbiRupee Bank</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Account Number:</span>
-                    <span className="font-mono">1234567890</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">IFSC Code:</span>
-                    <span className="font-mono">RUPB0001234</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Amount to Transfer:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Amount:</span>
                     <span className="font-bold text-green-600">₹{parseFloat(amount).toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">Reference:</span>
-                    <span className="font-mono text-sm">{transactionId}</span>
+                    <span className="text-gray-600 dark:text-gray-400">You will receive:</span>
+                    <span className="font-bold text-blue-600">{parseFloat(amount).toLocaleString()} arbINR</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600 dark:text-gray-400">Payment method:</span>
+                    <span className="font-semibold">Razorpay</span>
                   </div>
                 </div>
               </div>
 
-              {/* Instructions */}
+              {/* Payment Instructions */}
               <div className="space-y-4">
-                <h4 className="font-semibold text-gray-900 dark:text-white">Instructions:</h4>
+                <h4 className="font-semibold text-gray-900 dark:text-white">Payment Instructions:</h4>
                 <ol className="list-decimal list-inside space-y-2 text-sm text-gray-600 dark:text-gray-400">
-                  <li>Open your banking app or visit your bank&apos;s website</li>
-                  <li>Initiate a transfer to the account details shown above</li>
-                  <li>Use the transaction ID as the reference/remark</li>
-                  <li>Click &quot;I&apos;ve Made the Payment&quot; button below once completed</li>
+                  <li>Click the &quot;Pay with Razorpay&quot; button below</li>
+                  <li>Complete the payment using your preferred method (UPI, Card, Net Banking)</li>
+                  <li>Your arbINR tokens will be minted automatically upon successful payment</li>
                 </ol>
+              </div>
+
+              {/* Debug Info */}
+              {paymentOrder && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-xl p-4 text-sm">
+                  <p className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Debug Info:</p>
+                  <p className="text-yellow-700 dark:text-yellow-300">Payment Order: {JSON.stringify(paymentOrder, null, 2)}</p>
+                  <p className="text-yellow-700 dark:text-yellow-300">Razorpay Loaded: {typeof (window as any).Razorpay !== 'undefined' ? 'Yes' : 'No'}</p>
+                  <p className="text-yellow-700 dark:text-yellow-300">Button Disabled: {isLoading || !paymentOrder ? 'Yes' : 'No'}</p>
+                </div>
+              )}
+
+              {/* Test Button */}
+              <div className="bg-red-50 dark:bg-red-900/20 rounded-xl p-4">
+                <p className="text-red-700 dark:text-red-300 text-sm mb-2">Test Button (Always Works):</p>
+                <button
+                  onClick={() => {
+                    alert('Test button works! Payment order: ' + JSON.stringify(paymentOrder));
+                  }}
+                  className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm"
+                >
+                  Test Click
+                </button>
               </div>
 
               {/* Action Buttons */}
@@ -356,22 +467,32 @@ export default function Deposit() {
                 >
                   Back
                 </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleConfirmPayment}
-                  disabled={isLoading}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
+                <button
+                  onClick={() => {
+                    console.log('Pay with Razorpay button clicked');
+                    console.log('Payment order:', paymentOrder);
+                    console.log('Razorpay available:', typeof (window as any).Razorpay !== 'undefined');
+                    
+                    // Test if button is working
+                    if (!paymentOrder) {
+                      alert('Payment order not available. Please try again.');
+                      return;
+                    }
+                    
+                    handleRazorpayPayment();
+                  }}
+                  disabled={isLoading || !paymentOrder}
+                  className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-3 px-6 rounded-xl transition-all duration-200 disabled:cursor-not-allowed"
                 >
                   {isLoading ? (
                     <div className="flex items-center justify-center space-x-2">
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Verifying...</span>
+                      <span>Loading...</span>
                     </div>
                   ) : (
-                    "I&apos;ve Made the Payment"
+                    "Pay with Razorpay"
                   )}
-                </motion.button>
+                </button>
               </div>
             </div>
           )}

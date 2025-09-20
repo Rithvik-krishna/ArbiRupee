@@ -35,6 +35,15 @@ const userSchema = new mongoose.Schema({
     timezone: String,
     language: { type: String, default: 'en' }
   },
+  bankingDetails: {
+    accountHolder: String,
+    accountNumber: String,
+    ifscCode: String,
+    bankName: String,
+    accountType: { type: String, enum: ['savings', 'current'], default: 'savings' },
+    verified: { type: Boolean, default: false },
+    verifiedAt: Date
+  },
   kycStatus: {
     type: String,
     enum: ['pending', 'verified', 'rejected', 'not_started'],
@@ -209,9 +218,11 @@ userSchema.methods.updateStatistics = function(transactionData) {
     stats.totalWithdrawn += transactionData.amount;
   } else if (transactionData.type === 'transfer') {
     stats.totalTransfers += 1;
+    // For transfers, the amount is negative (subtracting from balance)
+    stats.totalDeposited += transactionData.amount; // This will be negative
   }
   
-  stats.lifetimeVolume += transactionData.amount;
+  stats.lifetimeVolume += Math.abs(transactionData.amount);
   stats.averageTransactionSize = stats.lifetimeVolume / stats.transactionCount;
   
   return this.save();

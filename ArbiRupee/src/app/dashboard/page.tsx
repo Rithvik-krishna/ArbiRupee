@@ -39,7 +39,7 @@ interface Transaction {
   type: 'deposit' | 'withdraw' | 'transfer';
   amount: string;
   status: 'pending' | 'completed' | 'failed';
-  timestamp: Date;
+  timestamp: Date | string | null;
   from?: string;
   to?: string;
 }
@@ -99,7 +99,12 @@ export default function Dashboard() {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.data.transactions) {
-          setTransactions(data.data.transactions);
+          // Transform transactions to ensure proper timestamp handling
+          const transformedTransactions = data.data.transactions.map((tx: any) => ({
+            ...tx,
+            timestamp: tx.timestamp || tx.createdAt || new Date().toISOString()
+          }));
+          setTransactions(transformedTransactions);
         } else {
           setTransactions([]);
         }
@@ -175,25 +180,38 @@ export default function Dashboard() {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
   };
 
-  const formatTime = (date: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor(diff / (1000 * 60));
+  const formatTime = (date: Date | string | undefined | null) => {
+    if (!date) {
+      return 'Unknown';
+    }
     
-    if (hours > 0) {
-      return `${hours}h ago`;
-    } else if (minutes > 0) {
-      return `${minutes}m ago`;
-    } else {
-      return 'Just now';
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) {
+        return 'Invalid date';
+      }
+      
+      const now = new Date();
+      const diff = now.getTime() - dateObj.getTime();
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor(diff / (1000 * 60));
+      
+      if (hours > 0) {
+        return `${hours}h ago`;
+      } else if (minutes > 0) {
+        return `${minutes}m ago`;
+      } else {
+        return 'Just now';
+      }
+    } catch (error) {
+      return 'Invalid date';
     }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-blue-900">
       {/* Navigation */}
-      <nav className="flex justify-between items-center p-6 max-w-7xl mx-auto">
+      <nav className="flex items-center justify-between p-6 mx-auto max-w-7xl">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -201,7 +219,7 @@ export default function Dashboard() {
           onClick={() => router.push('/')}
         >
           <ArbiRupeeLogo variant="icon" width={32} height={32} />
-          <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <span className="text-2xl font-bold text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text">
             ArbiRupee
           </span>
         </motion.div>
@@ -218,14 +236,14 @@ export default function Dashboard() {
         </motion.div>
       </nav>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="px-6 py-8 mx-auto max-w-7xl">
         {/* Welcome Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="mb-2 text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">
             Welcome to Your Dashboard
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
@@ -235,7 +253,7 @@ export default function Dashboard() {
 
         {/* Balance Cards */}
         <motion.div
-          className="grid md:grid-cols-3 gap-6 mb-8"
+          className="grid gap-6 mb-8 md:grid-cols-3"
           variants={staggerContainer}
           initial="initial"
           animate="animate"
@@ -243,16 +261,16 @@ export default function Dashboard() {
           {/* Main Balance Card */}
           <motion.div
             variants={fadeInUp}
-            className="md:col-span-2 p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20"
+            className="p-6 border shadow-lg md:col-span-2 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border-white/20"
           >
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-1">
+                <h3 className="mb-1 text-lg font-semibold text-gray-700 dark:text-gray-300">
                   Wallet Balance
                 </h3>
                 <div className="flex items-center space-x-2">
                   {balanceVisible ? (
-                    <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+                    <div className="text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">
                       {isBalanceLoading ? (
                         <div className="animate-pulse">•••••</div>
                       ) : (
@@ -262,7 +280,7 @@ export default function Dashboard() {
                       )}
                     </div>
                   ) : (
-                    <div className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">
+                    <div className="text-3xl font-bold text-gray-900 md:text-4xl dark:text-white">
                       ••••• <span className="text-lg text-blue-600">arbINR</span>
                     </div>
                   )}
@@ -278,7 +296,7 @@ export default function Dashboard() {
                   </button>
                 </div>
                 {balanceVisible && (
-                  <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">
                     ≈ ₹{inrValue} INR • ${usdValue} USD
                   </div>
                 )}
@@ -291,9 +309,9 @@ export default function Dashboard() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => router.push('/deposit')}
-                className="flex flex-col items-center p-4 bg-green-50 dark:bg-green-900/20 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                className="flex flex-col items-center p-4 transition-colors bg-green-50 dark:bg-green-900/20 rounded-xl hover:bg-green-100 dark:hover:bg-green-900/30"
               >
-                <ArrowDownIcon className="w-5 h-5 text-green-600 dark:text-green-400 mb-2" />
+                <ArrowDownIcon className="w-5 h-5 mb-2 text-green-600 dark:text-green-400" />
                 <span className="text-sm font-medium text-green-700 dark:text-green-300">Deposit</span>
               </motion.button>
               
@@ -301,9 +319,9 @@ export default function Dashboard() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => router.push('/withdraw')}
-                className="flex flex-col items-center p-4 bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                className="flex flex-col items-center p-4 transition-colors bg-red-50 dark:bg-red-900/20 rounded-xl hover:bg-red-100 dark:hover:bg-red-900/30"
               >
-                <ArrowUpIcon className="w-5 h-5 text-red-600 dark:text-red-400 mb-2" />
+                <ArrowUpIcon className="w-5 h-5 mb-2 text-red-600 dark:text-red-400" />
                 <span className="text-sm font-medium text-red-700 dark:text-red-300">Withdraw</span>
               </motion.button>
               
@@ -311,9 +329,9 @@ export default function Dashboard() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => router.push('/transfer')}
-                className="flex flex-col items-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                className="flex flex-col items-center p-4 transition-colors bg-blue-50 dark:bg-blue-900/20 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30"
               >
-                <ArrowsRightLeftIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 mb-2" />
+                <ArrowsRightLeftIcon className="w-5 h-5 mb-2 text-blue-600 dark:text-blue-400" />
                 <span className="text-sm font-medium text-blue-700 dark:text-blue-300">Transfer</span>
               </motion.button>
             </div>
@@ -324,7 +342,7 @@ export default function Dashboard() {
             variants={fadeInUp}
             className="space-y-4"
           >
-            <div className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20">
+            <div className="p-6 border shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border-white/20">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Earned</h4>
@@ -337,7 +355,7 @@ export default function Dashboard() {
               </div>
             </div>
             
-            <div className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20">
+            <div className="p-6 border shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border-white/20">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">Rewards Points</h4>
@@ -361,26 +379,26 @@ export default function Dashboard() {
           transition={{ delay: 0.3 }}
           className="mb-8"
         >
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">DeFi Opportunities</h2>
-          <div className="grid md:grid-cols-2 gap-6">
+          <h2 className="mb-6 text-2xl font-bold text-gray-900 dark:text-white">DeFi Opportunities</h2>
+          <div className="grid gap-6 md:grid-cols-2">
             <motion.div
               whileHover={{ scale: 1.02 }}
-              className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 cursor-pointer"
+              className="p-6 border shadow-lg cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border-white/20"
               onClick={() => router.push('/defi/uniswap')}
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
                     Uniswap Pool
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
                     Provide liquidity to arbINR/USDC pool
                   </p>
                   <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                     12.5% APY
                   </div>
                 </div>
-                <div className="w-12 h-12 bg-pink-100 dark:bg-pink-900/20 rounded-xl flex items-center justify-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-pink-100 dark:bg-pink-900/20 rounded-xl">
                   <PlusIcon className="w-6 h-6 text-pink-600 dark:text-pink-400" />
                 </div>
               </div>
@@ -391,22 +409,22 @@ export default function Dashboard() {
 
             <motion.div
               whileHover={{ scale: 1.02 }}
-              className="p-6 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 cursor-pointer"
+              className="p-6 border shadow-lg cursor-pointer bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border-white/20"
               onClick={() => router.push('/defi/aave')}
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  <h3 className="mb-2 text-lg font-semibold text-gray-900 dark:text-white">
                     Aave Lending
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  <p className="mb-2 text-sm text-gray-600 dark:text-gray-400">
                     Lend your arbINR and earn interest
                   </p>
                   <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                     8.7% APY
                   </div>
                 </div>
-                <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                <div className="flex items-center justify-center w-12 h-12 bg-blue-100 dark:bg-blue-900/20 rounded-xl">
                   <ChartBarIcon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                 </div>
               </div>
@@ -423,29 +441,29 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Recent Activity</h2>
-            <button className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium">
+            <button className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
               View All
             </button>
           </div>
           
-          <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 overflow-hidden">
+          <div className="overflow-hidden border shadow-lg bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl border-white/20">
             {transactions.map((tx, index) => (
               <motion.div
-                key={tx.id}
+                key={tx.id || `tx-${index}-${tx.type}-${tx.amount}`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: 0.1 * index }}
-                className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                className="flex items-center justify-between p-4 transition-colors border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-gray-50 dark:hover:bg-gray-700/50"
               >
                 <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                  <div className="flex items-center justify-center w-10 h-10 bg-gray-100 rounded-full dark:bg-gray-700">
                     {getTypeIcon(tx.type)}
                   </div>
                   <div>
                     <div className="flex items-center space-x-2">
-                      <h4 className="font-medium text-gray-900 dark:text-white capitalize">
+                      <h4 className="font-medium text-gray-900 capitalize dark:text-white">
                         {tx.type}
                       </h4>
                       {getStatusIcon(tx.status)}

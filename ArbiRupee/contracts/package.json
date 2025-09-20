@@ -1,0 +1,28 @@
+{
+  "name": "arbirupee-contracts",
+  "version": "1.0.0",
+  "description": "ArbiRupee smart contracts",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "deploy": "hardhat run scripts/deploy.js",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network arbitrum-sepolia",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network arbitrumOne",
+    "verify": "hardhat run scripts/verify.js",
+    "test": "hardhat test"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
+    "@openzeppelin/contracts": "^5.0.0",
+    "hardhat": "^2.26.3"
+  },
+  "keywords": [
+    "arbitrum",
+    "arbINR",
+    "stablecoin",
+    "defi"
+  ],
+  "author": "ArbiRupee Team",
+  "license": "MIT",
+  "type": "module"
+}

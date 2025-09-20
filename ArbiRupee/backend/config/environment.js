@@ -23,7 +23,7 @@ const config = {
     network: process.env.NETWORK || 'mainnet',
     arbitrumRpcUrl: process.env.ARBITRUM_RPC_URL || 'https://arb1.arbitrum.io/rpc',
     arbitrumSepoliaRpcUrl: process.env.ARBITRUM_SEPOLIA_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
-    arbINRContractAddress: process.env.ARBINR_CONTRACT_ADDRESS,
+    arbINRContractAddress: process.env.ARBINR_CONTRACT_ADDRESS || null,
     privateKey: process.env.PRIVATE_KEY
   },
 
@@ -113,7 +113,7 @@ const validateConfig = () => {
 };
 
 // Validate configuration on startup
-if (config.server.nodeEnv === 'production') {
+if (config.server.nodeEnv === 'production' || config.server.nodeEnv === 'development') {
   validateConfig();
 }
 
