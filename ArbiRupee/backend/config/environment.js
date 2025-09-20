@@ -57,7 +57,7 @@ const config = {
     maxDepositAmount: parseInt(process.env.MAX_DEPOSIT_AMOUNT) || 100000,
     minWithdrawalAmount: parseInt(process.env.MIN_WITHDRAWAL_AMOUNT) || 100,
     maxWithdrawalAmount: parseInt(process.env.MAX_WITHDRAWAL_AMOUNT) || 50000,
-    minTransferAmount: parseInt(process.env.MIN_TRANSFER_AMOUNT) || 1,
+    minTransferAmount: parseInt(process.env.MIN_TRANSFER_AMOUNT) || 0.1,
     maxTransferAmount: parseInt(process.env.MAX_TRANSFER_AMOUNT) || 50000
   },
 

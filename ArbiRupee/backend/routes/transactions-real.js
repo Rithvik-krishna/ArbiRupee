@@ -417,10 +417,11 @@ router.post('/transfer', authenticateWallet, validateTransaction, async (req, re
     
     // Check user's real arbINR balance from blockchain
     const balance = await blockchainService.getTokenBalance(user.walletAddress);
-    if (balance < amount + 1) { // Include 1 arbINR fee
+    const transferFee = 0.1; // Reduced fee for testing
+    if (balance < amount + transferFee) { // Include transfer fee
       return res.status(400).json({
         success: false,
-        message: 'Insufficient arbINR balance (including 1 arbINR transfer fee)'
+        message: `Insufficient arbINR balance (including ${transferFee} arbINR transfer fee)`
       });
     }
     

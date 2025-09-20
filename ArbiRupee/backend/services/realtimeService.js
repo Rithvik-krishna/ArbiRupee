@@ -95,11 +95,16 @@ class RealtimeService {
     try {
       const { blockchainService } = require('./blockchainService');
       
-      if (blockchainService.initialized) {
+      // Initialize blockchain service if not already initialized
+      if (!blockchainService.initialized) {
+        await blockchainService.initialize();
+      }
+      
+      if (blockchainService.initialized && blockchainService.arbINRContract) {
         const contractInfo = await blockchainService.getContractInfo();
         
         // Get additional stats from blockchain
-        const totalSupply = contractInfo.totalSupply;
+        const totalSupply = contractInfo.totalSupply || '0';
         const marketCap = (parseFloat(totalSupply) * this.exchangeRates.USD_INR).toFixed(2);
         
         this.contractStats = {
@@ -116,9 +121,38 @@ class RealtimeService {
         };
 
         console.log(`📊 Contract stats updated: ${totalSupply} arbINR, $${marketCap} market cap`);
+      } else {
+        // Fallback when contract is not available
+        this.contractStats = {
+          totalSupply: '0',
+          totalHolders: 0,
+          totalTransactions: 0,
+          marketCap: '0',
+          volume24h: '0',
+          price: {
+            usd: (1 / this.exchangeRates.USD_INR).toFixed(6),
+            inr: 1.0
+          },
+          lastUpdated: new Date()
+        };
+        console.log('📊 Contract stats updated: 0 arbINR, $0.00 market cap');
       }
     } catch (error) {
       console.error('❌ Failed to update contract stats:', error.message);
+      
+      // Fallback on error
+      this.contractStats = {
+        totalSupply: '0',
+        totalHolders: 0,
+        totalTransactions: 0,
+        marketCap: '0',
+        volume24h: '0',
+        price: {
+          usd: (1 / this.exchangeRates.USD_INR).toFixed(6),
+          inr: 1.0
+        },
+        lastUpdated: new Date()
+      };
     }
   }
 

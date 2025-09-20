@@ -1,21 +1,39 @@
 // services/blockchainService.js - Real blockchain integration for ArbiRupee
 const { ethers } = require('ethers');
 
-// Real ArbINR contract ABI (update with actual deployed contract ABI)
+// Real ArbINR contract ABI (from your deployed contract)
 const arbINRABI = [
-  "function mint(address to, uint256 amount) external",
-  "function burn(address from, uint256 amount) external", 
-  "function transfer(address to, uint256 amount) external returns (bool)",
-  "function balanceOf(address account) external view returns (uint256)",
-  "function totalSupply() external view returns (uint256)",
-  "function decimals() external view returns (uint8)",
+  // ERC20 Standard Functions
   "function name() external view returns (string)",
   "function symbol() external view returns (string)",
+  "function decimals() external view returns (uint8)",
+  "function totalSupply() external view returns (uint256)",
+  "function balanceOf(address account) external view returns (uint256)",
+  "function transfer(address to, uint256 amount) external returns (bool)",
+  "function allowance(address owner, address spender) external view returns (uint256)",
+  "function approve(address spender, uint256 amount) external returns (bool)",
+  "function transferFrom(address from, address to, uint256 amount) external returns (bool)",
+  
+  // ArbINR Specific Functions
+  "function mint(address to, uint256 amount, string memory transactionId) external",
+  "function burn(uint256 amount, string memory transactionId) external",
+  "function burnFrom(address from, uint256 amount, string memory transactionId) external",
+  "function authorizedMinters(address) external view returns (bool)",
+  "function authorizedBurners(address) external view returns (bool)",
+  "function totalMinted() external view returns (uint256)",
+  "function totalBurned() external view returns (uint256)",
+  "function MAX_SUPPLY() external view returns (uint256)",
   "function owner() external view returns (address)",
-  "function paused() external view returns (bool)",
+  
+  // Events
   "event Transfer(address indexed from, address indexed to, uint256 value)",
-  "event Mint(address indexed to, uint256 amount)",
-  "event Burn(address indexed from, uint256 amount)"
+  "event Approval(address indexed owner, address indexed spender, uint256 value)",
+  "event Mint(address indexed to, uint256 amount, string transactionId)",
+  "event Burn(address indexed from, uint256 amount, string transactionId)",
+  "event AuthorizedMinterUpdated(address indexed minter, bool authorized)",
+  "event AuthorizedBurnerUpdated(address indexed burner, bool authorized)",
+  "event Paused(address account)",
+  "event Unpaused(address account)"
 ];
 
 class BlockchainService {
@@ -159,11 +177,11 @@ class BlockchainService {
       console.log(`🏭 Minting ${amount} arbINR to ${toAddress}...`);
 
       // Estimate gas
-      const gasEstimate = await this.arbINRContract.mint.estimateGas(toAddress, amountInWei);
+      const gasEstimate = await this.arbINRContract.mint.estimateGas(toAddress, amountInWei, transactionId);
       const gasPrice = await this.provider.getFeeData();
 
       // Execute mint transaction
-      const tx = await this.arbINRContract.mint(toAddress, amountInWei, {
+      const tx = await this.arbINRContract.mint(toAddress, amountInWei, transactionId, {
         gasLimit: gasEstimate * 120n / 100n, // Add 20% buffer
         gasPrice: gasPrice.gasPrice
       });
@@ -214,11 +232,11 @@ class BlockchainService {
       console.log(`🔥 Burning ${amount} arbINR from ${fromAddress}...`);
 
       // Estimate gas
-      const gasEstimate = await this.arbINRContract.burn.estimateGas(fromAddress, amountInWei);
+      const gasEstimate = await this.arbINRContract.burn.estimateGas(amountInWei, transactionId);
       const gasPrice = await this.provider.getFeeData();
 
       // Execute burn transaction
-      const tx = await this.arbINRContract.burn(fromAddress, amountInWei, {
+      const tx = await this.arbINRContract.burn(amountInWei, transactionId, {
         gasLimit: gasEstimate * 120n / 100n, // Add 20% buffer
         gasPrice: gasPrice.gasPrice
       });
@@ -322,7 +340,6 @@ class BlockchainService {
       const decimals = await this.arbINRContract.decimals();
       const totalSupply = await this.arbINRContract.totalSupply();
       const owner = await this.arbINRContract.owner();
-      const paused = await this.arbINRContract.paused();
 
       const network = await this.provider.getNetwork();
 
@@ -333,7 +350,6 @@ class BlockchainService {
         decimals: decimals.toString(),
         totalSupply: ethers.formatUnits(totalSupply, decimals),
         owner,
-        paused,
         network: network.name,
         chainId: network.chainId.toString()
       };
@@ -421,10 +437,10 @@ class BlockchainService {
 
       switch (operation) {
         case 'mint':
-          gasEstimate = await this.arbINRContract.mint.estimateGas(params.to, params.amount);
+          gasEstimate = await this.arbINRContract.mint.estimateGas(params.to, params.amount, params.transactionId);
           break;
         case 'burn':
-          gasEstimate = await this.arbINRContract.burn.estimateGas(params.from, params.amount);
+          gasEstimate = await this.arbINRContract.burn.estimateGas(params.amount, params.transactionId);
           break;
         case 'transfer':
           gasEstimate = await this.arbINRContract.transfer.estimateGas(params.to, params.amount);
