@@ -4,11 +4,6 @@
 
 RupeeBridge is a decentralized finance (DeFi) application that bridges the gap between traditional Indian banking and blockchain technology by providing an INR-pegged stablecoin (arbINR) on the Arbitrum network.
 
-![RupeeBridge](https://img.shields.io/badge/Status-Demo%20Ready-brightgreen)
-![Next.js](https://img.shields.io/badge/Next.js-15-black)
-![Node.js](https://img.shields.io/badge/Node.js-Backend-green)
-![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)
-
 ## 🚀 Features
 
 ### 💰 Core Functionality
