@@ -7,6 +7,7 @@ const { authenticateWallet } = require('../middleware/auth');
 const { validateTransaction } = require('../middleware/validation');
 const { blockchainService } = require('../services/blockchainService');
 const { paymentService } = require('../services/paymentService');
+const stripeService = require('../services/stripeService');
 const { realtimeService } = require('../services/realtimeService');
 const config = require('../config/environment');
 const router = express.Router();
@@ -126,34 +127,38 @@ router.post('/deposit', authenticateWallet, validateTransaction, async (req, res
     transaction.generateTransactionId();
     await transaction.save();
     
-    // Create payment order with real payment gateway
-    const paymentOrder = await paymentService.createDepositOrder(
-      user.walletAddress,
+    // Create Stripe payment intent
+    const paymentIntent = await stripeService.createPaymentIntent(
       amount,
-      transaction.transactionId
+      'inr',
+      {
+        transactionId: transaction.transactionId,
+        walletAddress: user.walletAddress,
+        userId: user._id.toString()
+      }
     );
     
-    if (!paymentOrder.success) {
+    if (!paymentIntent) {
       await transaction.updateStatus('failed', {
         error: {
-          code: 'PAYMENT_ORDER_FAILED',
-          message: paymentOrder.error
+          code: 'STRIPE_ERROR',
+          message: 'Failed to create payment intent'
         }
       });
       
       return res.status(500).json({
         success: false,
-        message: 'Failed to create payment order',
-        error: paymentOrder.error
+        message: 'Failed to create payment intent'
       });
     }
     
-    // Update transaction with payment order details
+    // Update transaction with payment intent details
     await transaction.updateOne({
-      'payment.orderId': paymentOrder.orderId,
-      'payment.amount': paymentOrder.amount,
-      'payment.currency': paymentOrder.currency,
-      'payment.status': paymentOrder.status
+      'payment.paymentIntentId': paymentIntent.id,
+      'payment.amount': paymentIntent.amount,
+      'payment.currency': paymentIntent.currency,
+      'payment.status': paymentIntent.status,
+      'payment.clientSecret': paymentIntent.client_secret
     });
     
     res.status(201).json({
@@ -163,11 +168,13 @@ router.post('/deposit', authenticateWallet, validateTransaction, async (req, res
         transactionId: transaction.transactionId,
         amount: transaction.amount,
         status: transaction.status,
-        paymentOrder: {
-          orderId: paymentOrder.orderId,
-          amount: paymentOrder.amount,
-          currency: paymentOrder.currency
+        paymentIntent: {
+          id: paymentIntent.id,
+          clientSecret: paymentIntent.client_secret,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency
         },
+        publishableKey: stripeService.getPublishableKey(),
         estimatedProcessingTime: '2-5 minutes'
       }
     });
@@ -507,7 +514,7 @@ router.post('/transfer', authenticateWallet, validateTransaction, async (req, re
             // Update sender statistics
             await user.updateStatistics({
               type: 'transfer',
-              amount: amount
+              amount: -amount // Negative to subtract from balance
             });
             
             // Update recipient statistics if they're in our system
@@ -608,10 +615,10 @@ router.get('/user/stats', authenticateWallet, async (req, res) => {
   }
 });
 
-// POST /api/transactions/confirm-deposit - Confirm bank transfer payment
+// POST /api/transactions/confirm-deposit - Confirm Stripe payment
 router.post('/confirm-deposit', authenticateWallet, async (req, res) => {
   try {
-    const { transactionId, paymentId, signature } = req.body;
+    const { transactionId, paymentIntentId } = req.body;
     
     // Find the pending deposit transaction
     const transaction = await Transaction.findOne({
@@ -629,39 +636,25 @@ router.post('/confirm-deposit', authenticateWallet, async (req, res) => {
     }
     
     // Validate required payment parameters
-    if (!paymentId || !signature) {
+    if (!paymentIntentId) {
       return res.status(400).json({
         success: false,
-        message: 'Payment ID and signature are required for payment verification'
+        message: 'Payment Intent ID is required for payment verification'
       });
     }
     
-    // Real payment verification (when paymentId and signature are provided)
-    const verification = paymentService.verifyPaymentSignature(
-      transaction.payment.orderId,
-      paymentId,
-      signature
-    );
+    // Retrieve and verify Stripe payment intent
+    const paymentIntent = await stripeService.retrievePaymentIntent(paymentIntentId);
     
-    if (!verification.success || !verification.isValid) {
+    if (!paymentIntent || paymentIntent.status !== 'succeeded') {
       return res.status(400).json({
         success: false,
-        message: 'Invalid payment signature'
-      });
-    }
-    
-    // Get payment details
-    const paymentDetails = await paymentService.getPaymentDetails(paymentId);
-    
-    if (!paymentDetails.success) {
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to verify payment'
+        message: 'Payment not completed or failed'
       });
     }
     
     // Verify payment amount matches transaction amount
-    if (paymentDetails.amount !== transaction.amount * 100) { // Convert to paise
+    if (paymentIntent.amount !== transaction.amount * 100) { // Convert to paise
       return res.status(400).json({
         success: false,
         message: 'Payment amount mismatch'
@@ -670,14 +663,14 @@ router.post('/confirm-deposit', authenticateWallet, async (req, res) => {
     
     // Update transaction with payment details
     await transaction.updateOne({
-      'payment.paymentId': paymentId,
-      'payment.status': paymentDetails.status,
-      'payment.method': paymentDetails.method,
-      'payment.captured': paymentDetails.captured
+      'payment.paymentIntentId': paymentIntentId,
+      'payment.status': paymentIntent.status,
+      'payment.method': paymentIntent.payment_method?.type || 'card',
+      'payment.captured': paymentIntent.status === 'succeeded'
     });
     
     // Process successful payment
-    if (paymentDetails.status === 'captured') {
+    if (paymentIntent.status === 'succeeded') {
       // Mint arbINR tokens
       const mintResult = await blockchainService.mintTokens(
         req.user.walletAddress,
@@ -770,6 +763,74 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
       message: 'Webhook processing failed'
     });
   }
+});
+
+// POST /api/stripe/webhook - Stripe webhook endpoint
+router.post('/stripe/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripeService.verifyWebhookSignature(req.body, sig);
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  switch (event.type) {
+    case 'payment_intent.succeeded':
+      const paymentIntent = event.data.object;
+      console.log('PaymentIntent succeeded:', paymentIntent.id);
+      
+      // Find transaction by payment intent ID
+      const transaction = await Transaction.findOne({
+        'payment.paymentIntentId': paymentIntent.id
+      });
+      
+      if (transaction) {
+        // Update transaction status
+        await transaction.updateStatus('completed', {
+          stripeEventId: event.id,
+          paymentMethod: paymentIntent.payment_method?.type || 'card'
+        });
+        
+        // Update user statistics
+        const user = await User.findById(transaction.user);
+        if (user) {
+          await user.updateStatistics({
+            type: 'deposit',
+            amount: transaction.amount
+          });
+        }
+      }
+      break;
+      
+    case 'payment_intent.payment_failed':
+      const failedPayment = event.data.object;
+      console.log('PaymentIntent failed:', failedPayment.id);
+      
+      // Find and update failed transaction
+      const failedTransaction = await Transaction.findOne({
+        'payment.paymentIntentId': failedPayment.id
+      });
+      
+      if (failedTransaction) {
+        await failedTransaction.updateStatus('failed', {
+          error: {
+            code: 'PAYMENT_FAILED',
+            message: failedPayment.last_payment_error?.message || 'Payment failed'
+          },
+          stripeEventId: event.id
+        });
+      }
+      break;
+      
+    default:
+      console.log(`Unhandled event type ${event.type}`);
+  }
+
+  res.json({received: true});
 });
 
 module.exports = router;

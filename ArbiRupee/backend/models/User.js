@@ -220,6 +220,9 @@ userSchema.methods.updateStatistics = function(transactionData) {
     stats.totalTransfers += 1;
     // For transfers, the amount is negative (subtracting from balance)
     stats.totalDeposited += transactionData.amount; // This will be negative
+  } else if (transactionData.type === 'transfer_received') {
+    // For received transfers, add to balance
+    stats.totalDeposited += transactionData.amount;
   }
   
   stats.lifetimeVolume += Math.abs(transactionData.amount);

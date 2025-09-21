@@ -132,27 +132,18 @@ class BlockchainService {
         throw new Error('Invalid wallet address');
       }
 
-      if (!this.arbINRContract) {
-        console.log('⚠️  Contract not available - checking database balance');
-        // Return balance from database when contract is not deployed
-        const User = require('../models/User');
-        const user = await User.findOne({ walletAddress });
-        if (user && user.statistics) {
-          const totalDeposited = user.statistics.totalDeposited || 0;
-          const totalWithdrawn = user.statistics.totalWithdrawn || 0;
-          const balance = totalDeposited - totalWithdrawn;
-          console.log(`💰 Database balance for ${walletAddress}: ${balance} arbINR (Deposited: ${totalDeposited}, Withdrawn: ${totalWithdrawn})`);
-          return Math.max(0, balance); // Ensure balance is not negative
-        }
-        return 0;
+      // Always use database balance in demo mode
+      console.log('🎭 Demo mode: Getting balance from database');
+      const User = require('../models/User');
+      const user = await User.findOne({ walletAddress });
+      if (user && user.statistics) {
+        const totalDeposited = user.statistics.totalDeposited || 0;
+        const totalWithdrawn = user.statistics.totalWithdrawn || 0;
+        const balance = totalDeposited - totalWithdrawn;
+        console.log(`💰 Database balance for ${walletAddress}: ${balance} arbINR (Deposited: ${totalDeposited}, Withdrawn: ${totalWithdrawn})`);
+        return Math.max(0, balance); // Ensure balance is not negative
       }
-
-      const balance = await this.arbINRContract.balanceOf(walletAddress);
-      const decimals = await this.arbINRContract.decimals();
-      const formattedBalance = parseFloat(ethers.formatUnits(balance, decimals));
-
-      console.log(`💰 Real balance for ${walletAddress}: ${formattedBalance} arbINR`);
-      return formattedBalance;
+      return 0;
 
     } catch (error) {
       console.error('❌ Get token balance error:', error);
@@ -169,6 +160,29 @@ class BlockchainService {
 
       if (!ethers.isAddress(toAddress)) {
         throw new Error('Invalid recipient address');
+      }
+
+      // Demo mode - simulate minting without real blockchain transaction
+      if (!this.wallet || !this.wallet.privateKey || this.wallet.privateKey.includes('your_private_key_here')) {
+        console.log(`🎭 Demo mode: Simulating mint of ${amount} arbINR to ${toAddress}`);
+        
+        // Simulate transaction delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Generate a demo transaction hash (proper 66 character format)
+        const demoTxHash = `0x${Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+        
+        console.log(`✅ Demo mint successful - TxHash: ${demoTxHash}`);
+        
+        return {
+          success: true,
+          txHash: demoTxHash,
+          blockNumber: Math.floor(Math.random() * 1000000) + 1000000,
+          gasUsed: '21000',
+          gasPrice: '20000000000',
+          amount: amount,
+          demo: true
+        };
       }
 
       const decimals = await this.arbINRContract.decimals();
@@ -224,6 +238,29 @@ class BlockchainService {
 
       if (!ethers.isAddress(fromAddress)) {
         throw new Error('Invalid address');
+      }
+
+      // Demo mode - simulate burning without real blockchain transaction
+      if (!this.wallet || !this.wallet.privateKey || this.wallet.privateKey.includes('your_private_key_here')) {
+        console.log(`🎭 Demo mode: Simulating burn of ${amount} arbINR from ${fromAddress}`);
+        
+        // Simulate transaction delay
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Generate a demo transaction hash (proper 66 character format)
+        const demoTxHash = `0x${Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+        
+        console.log(`✅ Demo burn successful - TxHash: ${demoTxHash}`);
+        
+        return {
+          success: true,
+          txHash: demoTxHash,
+          blockNumber: Math.floor(Math.random() * 1000000) + 1000000,
+          gasUsed: '21000',
+          gasPrice: '20000000000',
+          amount: amount,
+          demo: true
+        };
       }
 
       const decimals = await this.arbINRContract.decimals();
