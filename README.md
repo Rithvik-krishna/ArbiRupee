@@ -1,8 +1,8 @@
-# RupeeBridge 🇮🇳
+# ArbiRupee 🇮🇳
 
 **INR-pegged stablecoin on Arbitrum blockchain with seamless deposit/withdraw functionality**
 
-RupeeBridge is a decentralized finance (DeFi) application that bridges the gap between traditional Indian banking and blockchain technology by providing an INR-pegged stablecoin (arbINR) on the Arbitrum network.
+ArbiRupee is a decentralized finance (DeFi) application that bridges the gap between traditional Indian banking and blockchain technology by providing an INR-pegged stablecoin (arbINR) on the Arbitrum network.
 
 ## 🚀 Features
 
@@ -154,7 +154,7 @@ The application runs in demo mode by default, which means:
 ## 📊 Architecture
 
 ```
-RupeeBridge/
+ArbiRupee/
 ├── src/                     # Frontend source code
 │   ├── app/                 # Next.js App Router pages
 │   ├── components/          # Reusable React components
